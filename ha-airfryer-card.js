@@ -1,24 +1,24 @@
 /**
  * ha-airfryer-card
  * Lovelace-Karte für Airfryer-Rezepte mit manueller Steuerung.
+ * Responsive: ab 500px werden Steuerung und Warmhalten nebeneinander angezeigt.
  */
 
 const DEFAULT_LABEL = "airfryer";
 const DEFAULT_BLUEPRINT_PATH = "/config/blueprint/dashboard";
 
-// Alle konfigurierbaren Steuerelemente
 const CONTROLS = [
-  { key: "entity_power",       label: "Stromversorgung",      type: "switch",  icon: "mdi:power",         section: "main" },
-  { key: "entity_temp",        label: "Temperatur",           type: "number",  icon: "mdi:thermometer",   section: "main", unit: "°C" },
-  { key: "entity_time",        label: "Kochzeit",             type: "number",  icon: "mdi:timer",         section: "main", unit: "min" },
-  { key: "entity_start",       label: "Kochen starten",       type: "button",  icon: "mdi:play",          section: "actions" },
-  { key: "entity_pause",       label: "Pause",                type: "button",  icon: "mdi:pause",         section: "actions" },
-  { key: "entity_stop",        label: "Stopp",                type: "button",  icon: "mdi:stop",          section: "actions" },
-  { key: "entity_preheat",     label: "Vorheizen",            type: "switch",  icon: "mdi:fire",          section: "warm" },
-  { key: "entity_keep_warm",   label: "Warmhalten",           type: "button",  icon: "mdi:coffee-warm",   section: "warm" },
-  { key: "entity_warm_time",   label: "Warmhaltedauer",       type: "number",  icon: "mdi:timer-outline", section: "warm", unit: "min" },
+  { key: "entity_power",       label: "Stromversorgung",      type: "switch",  icon: "mdi:power",             section: "main" },
+  { key: "entity_temp",        label: "Temperatur",           type: "number",  icon: "mdi:thermometer",       section: "main", unit: "°C" },
+  { key: "entity_time",        label: "Kochzeit",             type: "number",  icon: "mdi:timer",             section: "main", unit: "min" },
+  { key: "entity_start",       label: "Kochen starten",       type: "button",  icon: "mdi:play",              section: "actions" },
+  { key: "entity_pause",       label: "Pause",                type: "button",  icon: "mdi:pause",             section: "actions" },
+  { key: "entity_stop",        label: "Stopp",                type: "button",  icon: "mdi:stop",              section: "actions" },
+  { key: "entity_preheat",     label: "Vorheizen",            type: "switch",  icon: "mdi:fire",              section: "warm" },
+  { key: "entity_keep_warm",   label: "Warmhalten",           type: "button",  icon: "mdi:coffee-warm",       section: "warm" },
   { key: "entity_warm_temp",   label: "Warmhaltetemperatur",  type: "number",  icon: "mdi:thermometer-lines", section: "warm", unit: "°C" },
-  { key: "entity_cook_method", label: "Kochmethode",          type: "select",  icon: "mdi:chef-hat",      section: "warm" },
+  { key: "entity_warm_time",   label: "Warmhaltedauer",       type: "number",  icon: "mdi:timer-outline",     section: "warm", unit: "min" },
+  { key: "entity_cook_method", label: "Kochmethode",          type: "select",  icon: "mdi:chef-hat",          section: "warm" },
 ];
 
 class HaAiryerCard extends HTMLElement {
@@ -50,7 +50,6 @@ class HaAiryerCard extends HTMLElement {
     this._hass = hass;
     this._scripts = this._getScripts();
     const newScripts = this._scripts.map((s) => s.entity_id).join(",");
-
     if (!this._initialized) {
       this._initialized = true;
       this._render();
@@ -92,10 +91,21 @@ class HaAiryerCard extends HTMLElement {
     return id && this._hass ? this._hass.states[id] : null;
   }
 
-  // Rendert die komplette Karte
+  _hasMain() {
+    return ["entity_power","entity_temp","entity_time","entity_start","entity_pause","entity_stop"]
+      .some((k) => this._config[k]);
+  }
+
+  _hasWarm() {
+    return ["entity_preheat","entity_keep_warm","entity_warm_temp","entity_warm_time","entity_cook_method"]
+      .some((k) => this._config[k]);
+  }
+
   _render() {
     const { title, columns, blueprint_path, icon_size, font_size } = this._config;
-    const hasAnyControl = CONTROLS.some((c) => this._config[c.key]);
+    const hasMain = this._hasMain();
+    const hasWarm = this._hasWarm();
+    const hasControls = hasMain || hasWarm;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -104,115 +114,113 @@ class HaAiryerCard extends HTMLElement {
 
         /* ── Header ── */
         .header {
-          display: flex; align-items: center;
-          justify-content: space-between;
-          margin-bottom: ${hasAnyControl ? "12px" : "10px"};
-          padding: 0 4px; min-height: 32px; gap: 8px;
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 12px; padding: 0 4px; min-height: 32px; gap: 8px;
         }
         .title { font-size: 1em; font-weight: 500; color: var(--primary-text-color); flex: 1; }
-        .header-btns { display: flex; gap: 8px; align-items: center; }
         .add-btn {
           display: flex; align-items: center; justify-content: center;
           width: 32px; height: 32px; border-radius: 50%;
           background: var(--primary-color); color: var(--text-primary-color, #fff);
           cursor: pointer; border: none; font-size: 1.4em; line-height: 1;
-          transition: opacity 0.15s;
+          transition: opacity 0.15s; flex-shrink: 0;
         }
         .add-btn:hover { opacity: 0.85; }
 
-        /* ── Manuelle Steuerung ── */
-        .controls { margin-bottom: 12px; }
-        .section-label {
-          font-size: 0.72em; font-weight: 600; letter-spacing: 0.06em;
-          color: var(--secondary-text-color); text-transform: uppercase;
-          margin: 10px 4px 6px; display: block;
+        /* ── Zwei-Spalten-Layout ── */
+        .controls-wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          margin-bottom: 12px;
         }
-        .divider {
+        @container (min-width: 480px) {
+          .controls-wrapper {
+            flex-direction: row;
+            gap: 12px;
+          }
+          .col-main { flex: 1; border-right: 1px solid var(--divider-color, rgba(255,255,255,0.1)); padding-right: 12px; }
+          .col-warm { flex: 1; }
+          .col-divider { display: none; }
+        }
+        :host {
+          container-type: inline-size;
+        }
+        .col-main { flex: 1; }
+        .col-warm { flex: 1; }
+        .col-divider {
           border: none; border-top: 1px solid var(--divider-color, rgba(255,255,255,0.1));
           margin: 10px 0;
         }
 
-        /* Slider-Zeile */
+        /* ── Steuerelemente ── */
+        .section-label {
+          font-size: 0.72em; font-weight: 600; letter-spacing: 0.06em;
+          color: var(--secondary-text-color); text-transform: uppercase;
+          margin: 0 4px 8px; display: block;
+        }
         .slider-row {
-          display: flex; align-items: center; gap: 8px; padding: 4px 4px;
+          display: flex; align-items: center; gap: 8px; padding: 4px;
         }
-        .slider-row ha-icon {
-          --mdc-icon-size: 18px; color: var(--primary-color); flex-shrink: 0;
-        }
-        .slider-row input[type=range] {
-          flex: 1; accent-color: var(--primary-color); cursor: pointer;
-        }
-        .slider-val {
-          font-size: 0.8em; color: var(--primary-text-color);
-          min-width: 52px; text-align: right; flex-shrink: 0;
-        }
+        .slider-row ha-icon { --mdc-icon-size: 18px; color: var(--primary-color); flex-shrink: 0; }
+        .slider-row input[type=range] { flex: 1; accent-color: var(--primary-color); cursor: pointer; min-width: 0; }
+        .slider-val { font-size: 0.8em; color: var(--primary-text-color); min-width: 52px; text-align: right; flex-shrink: 0; }
 
-        /* Toggle-Zeile */
         .toggle-row {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 6px 4px;
+          display: flex; align-items: center; justify-content: space-between; padding: 6px 4px;
         }
-        .toggle-row .row-label {
-          display: flex; align-items: center; gap: 6px;
-          font-size: 0.85em; color: var(--primary-text-color);
-        }
+        .toggle-row .row-label { display: flex; align-items: center; gap: 6px; font-size: 0.85em; color: var(--primary-text-color); }
         .toggle-row ha-icon { --mdc-icon-size: 18px; color: var(--primary-color); }
-        .toggle {
-          position: relative; width: 42px; height: 24px; flex-shrink: 0;
-        }
+        .toggle { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
         .toggle input { opacity: 0; width: 0; height: 0; }
         .toggle-slider {
           position: absolute; inset: 0; border-radius: 24px; cursor: pointer;
           background: var(--divider-color, #555); transition: background 0.2s;
         }
         .toggle-slider::before {
-          content: ""; position: absolute;
-          width: 18px; height: 18px; border-radius: 50%;
+          content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
           left: 3px; top: 3px; background: #fff; transition: transform 0.2s;
         }
         .toggle input:checked + .toggle-slider { background: var(--primary-color); }
         .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
 
-        /* Action-Buttons */
-        .action-row {
-          display: flex; gap: 8px; padding: 4px 0; flex-wrap: wrap;
-        }
+        .action-row { display: flex; gap: 8px; padding: 6px 4px; flex-wrap: wrap; }
         .action-btn {
-          flex: 1; min-width: 60px;
+          flex: 1; min-width: 56px;
           display: flex; flex-direction: column; align-items: center;
           gap: 4px; padding: 8px 4px; border-radius: 10px; border: none;
           cursor: pointer; transition: opacity 0.15s; font-size: 0.75em;
-          color: var(--text-primary-color, #fff);
+          color: #fff;
         }
         .action-btn ha-icon { --mdc-icon-size: 20px; }
         .action-btn.start { background: var(--success-color, #43a047); }
         .action-btn.pause { background: var(--warning-color, #fb8c00); }
         .action-btn.stop  { background: var(--error-color, #db4437); }
-        .action-btn.warm  { background: var(--info-color, #039be5); }
+        .action-btn.warm  { background: var(--info-color, #039be5); flex: none; padding: 8px 14px; flex-direction: row; gap: 6px; }
         .action-btn:hover { opacity: 0.85; }
 
-        /* Select */
-        .select-row {
-          display: flex; align-items: center; gap: 8px; padding: 4px 4px;
-        }
+        .select-row { display: flex; align-items: center; gap: 8px; padding: 4px; }
         .select-row ha-icon { --mdc-icon-size: 18px; color: var(--primary-color); flex-shrink: 0; }
         .select-row select {
-          flex: 1; padding: 5px 8px; border-radius: 8px;
+          flex: 1; padding: 5px 8px; border-radius: 8px; min-width: 0;
           border: 1px solid var(--divider-color); font-size: 0.85em;
-          background: var(--card-background-color); color: var(--primary-text-color);
-          cursor: pointer;
+          background: var(--card-background-color); color: var(--primary-text-color); cursor: pointer;
+        }
+
+        /* ── Trennlinie vor Rezepten ── */
+        .recipe-divider {
+          border: none; border-top: 1px solid var(--divider-color, rgba(255,255,255,0.1));
+          margin: 0 0 12px;
         }
 
         /* ── Rezept-Grid ── */
-        .section-recipes {}
         .grid {
           display: grid;
           grid-template-columns: repeat(${columns}, 1fr);
           gap: 8px;
         }
         .script-btn {
-          display: flex; flex-direction: column;
-          align-items: center; justify-content: center;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
           gap: 6px; padding: 12px 6px; border-radius: 12px;
           background: var(--card-background-color, #1c1c1c);
           border: 1px solid var(--divider-color, rgba(255,255,255,0.1));
@@ -232,230 +240,178 @@ class HaAiryerCard extends HTMLElement {
       <ha-card>
         <div class="header">
           ${title ? `<span class="title">${title}</span>` : `<span class="title"></span>`}
-          <div class="header-btns">
-            <button class="add-btn" id="add-btn" title="Neue Einstellung anlegen">+</button>
-          </div>
+          <button class="add-btn" id="add-btn" title="Neue Einstellung anlegen">+</button>
         </div>
-        ${hasAnyControl ? `<div class="controls" id="controls"></div><hr class="divider"/>` : ""}
-        <div class="section-recipes">
-          <div class="grid" id="grid"></div>
+
+        ${hasControls ? `
+        <div class="controls-wrapper">
+          ${hasMain ? `<div class="col-main" id="col-main"></div>` : ""}
+          ${hasMain && hasWarm ? `<hr class="col-divider"/>` : ""}
+          ${hasWarm ? `<div class="col-warm" id="col-warm"></div>` : ""}
         </div>
+        <hr class="recipe-divider"/>
+        ` : ""}
+
+        <div class="grid" id="grid"></div>
       </ha-card>
     `;
 
     this.shadowRoot.getElementById("add-btn")
       .addEventListener("click", () => this._navigate(blueprint_path));
 
-    if (hasAnyControl) this._updateControls();
+    if (hasControls) this._updateControls();
     this._renderButtons();
   }
 
-  // Aktualisiert die Steuerung (Werte + State)
   _updateControls() {
-    const container = this.shadowRoot.getElementById("controls");
-    if (!container) return;
-
     const cfg = this._config;
-    const sections = { main: [], actions: [], warm: [] };
 
-    // Haupt-Section
-    if (cfg.entity_power) {
-      const st = this._stateOf("entity_power");
-      const on = st?.state === "on";
-      sections.main.push(`
-        <div class="toggle-row">
-          <span class="row-label">
-            <ha-icon icon="mdi:power"></ha-icon> Stromversorgung
-          </span>
-          <label class="toggle">
-            <input type="checkbox" id="toggle_power" ${on ? "checked" : ""}/>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>`);
-    }
+    // ── Linke Spalte (Steuerung) ──
+    const colMain = this.shadowRoot.getElementById("col-main");
+    if (colMain) {
+      let html = `<span class="section-label">Manuelle Steuerung</span>`;
 
-    if (cfg.entity_temp) {
-      const st = this._stateOf("entity_temp");
-      const val = parseFloat(st?.state || 0);
-      const min = st?.attributes?.min || 40;
-      const max = st?.attributes?.max || 200;
-      const step = st?.attributes?.step || 5;
-      const unit = st?.attributes?.unit_of_measurement || "°C";
-      sections.main.push(`
-        <div class="slider-row">
-          <ha-icon icon="mdi:thermometer"></ha-icon>
+      if (cfg.entity_power) {
+        const on = this._stateOf("entity_power")?.state === "on";
+        html += `<div class="toggle-row">
+          <span class="row-label"><ha-icon icon="mdi:power"></ha-icon> Stromversorgung</span>
+          <label class="toggle"><input type="checkbox" id="toggle_power" ${on ? "checked" : ""}/>
+          <span class="toggle-slider"></span></label></div>`;
+      }
+
+      if (cfg.entity_temp) {
+        const st = this._stateOf("entity_temp");
+        const val = parseFloat(st?.state || 0);
+        const min = st?.attributes?.min || 40, max = st?.attributes?.max || 200, step = st?.attributes?.step || 5;
+        const unit = st?.attributes?.unit_of_measurement || "°C";
+        html += `<div class="slider-row"><ha-icon icon="mdi:thermometer"></ha-icon>
           <input type="range" id="slider_temp" min="${min}" max="${max}" step="${step}" value="${val}"/>
-          <span class="slider-val" id="val_temp">${val} ${unit}</span>
-        </div>`);
-    }
+          <span class="slider-val" id="val_temp">${val} ${unit}</span></div>`;
+      }
 
-    if (cfg.entity_time) {
-      const st = this._stateOf("entity_time");
-      const val = parseFloat(st?.state || 0);
-      const min = st?.attributes?.min || 1;
-      const max = st?.attributes?.max || 60;
-      const step = st?.attributes?.step || 1;
-      const unit = st?.attributes?.unit_of_measurement || "min";
-      sections.main.push(`
-        <div class="slider-row">
-          <ha-icon icon="mdi:timer"></ha-icon>
+      if (cfg.entity_time) {
+        const st = this._stateOf("entity_time");
+        const val = parseFloat(st?.state || 0);
+        const min = st?.attributes?.min || 1, max = st?.attributes?.max || 60, step = st?.attributes?.step || 1;
+        const unit = st?.attributes?.unit_of_measurement || "min";
+        html += `<div class="slider-row"><ha-icon icon="mdi:timer"></ha-icon>
           <input type="range" id="slider_time" min="${min}" max="${max}" step="${step}" value="${val}"/>
-          <span class="slider-val" id="val_time">${val} ${unit}</span>
-        </div>`);
+          <span class="slider-val" id="val_time">${val} ${unit}</span></div>`;
+      }
+
+      const actionBtns = [];
+      if (cfg.entity_start) actionBtns.push(`<button class="action-btn start" id="btn_start"><ha-icon icon="mdi:play"></ha-icon>Starten</button>`);
+      if (cfg.entity_pause) actionBtns.push(`<button class="action-btn pause" id="btn_pause"><ha-icon icon="mdi:pause"></ha-icon>Pause</button>`);
+      if (cfg.entity_stop)  actionBtns.push(`<button class="action-btn stop"  id="btn_stop"><ha-icon icon="mdi:stop"></ha-icon>Stopp</button>`);
+      if (actionBtns.length) html += `<div class="action-row">${actionBtns.join("")}</div>`;
+
+      colMain.innerHTML = html;
+      this._bindMainEvents(colMain);
     }
 
-    // Action-Buttons
-    const actionBtns = [];
-    if (cfg.entity_start) actionBtns.push(`<button class="action-btn start" id="btn_start"><ha-icon icon="mdi:play"></ha-icon>Starten</button>`);
-    if (cfg.entity_pause) actionBtns.push(`<button class="action-btn pause" id="btn_pause"><ha-icon icon="mdi:pause"></ha-icon>Pause</button>`);
-    if (cfg.entity_stop)  actionBtns.push(`<button class="action-btn stop"  id="btn_stop"><ha-icon icon="mdi:stop"></ha-icon>Stopp</button>`);
-    if (actionBtns.length) sections.actions.push(`<div class="action-row">${actionBtns.join("")}</div>`);
+    // ── Rechte Spalte (Warmhalten) ──
+    const colWarm = this.shadowRoot.getElementById("col-warm");
+    if (colWarm) {
+      let html = `<span class="section-label">Warmhalten & Einstellungen</span>`;
 
-    // Warm-Section
-    if (cfg.entity_preheat) {
-      const st = this._stateOf("entity_preheat");
-      const on = st?.state === "on";
-      sections.warm.push(`
-        <div class="toggle-row">
+      if (cfg.entity_preheat) {
+        const on = this._stateOf("entity_preheat")?.state === "on";
+        html += `<div class="toggle-row">
           <span class="row-label"><ha-icon icon="mdi:fire"></ha-icon> Vorheizen</span>
-          <label class="toggle">
-            <input type="checkbox" id="toggle_preheat" ${on ? "checked" : ""}/>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>`);
-    }
+          <label class="toggle"><input type="checkbox" id="toggle_preheat" ${on ? "checked" : ""}/>
+          <span class="toggle-slider"></span></label></div>`;
+      }
 
-    if (cfg.entity_keep_warm) sections.warm.push(`
-      <div class="action-row">
-        <button class="action-btn warm" id="btn_keep_warm" style="flex:none;padding:8px 16px;flex-direction:row;gap:6px;">
-          <ha-icon icon="mdi:coffee-warm"></ha-icon>Warmhalten
-        </button>
-      </div>`);
+      if (cfg.entity_keep_warm) html += `<div class="action-row">
+        <button class="action-btn warm" id="btn_keep_warm"><ha-icon icon="mdi:coffee-warm"></ha-icon>Warmhalten</button></div>`;
 
-    if (cfg.entity_warm_temp) {
-      const st = this._stateOf("entity_warm_temp");
-      const val = parseFloat(st?.state || 0);
-      const min = st?.attributes?.min || 40;
-      const max = st?.attributes?.max || 100;
-      const step = st?.attributes?.step || 5;
-      const unit = st?.attributes?.unit_of_measurement || "°C";
-      sections.warm.push(`
-        <div class="slider-row">
-          <ha-icon icon="mdi:thermometer-lines"></ha-icon>
+      if (cfg.entity_warm_temp) {
+        const st = this._stateOf("entity_warm_temp");
+        const val = parseFloat(st?.state || 0);
+        const min = st?.attributes?.min || 40, max = st?.attributes?.max || 100, step = st?.attributes?.step || 5;
+        const unit = st?.attributes?.unit_of_measurement || "°C";
+        html += `<div class="slider-row"><ha-icon icon="mdi:thermometer-lines"></ha-icon>
           <input type="range" id="slider_warm_temp" min="${min}" max="${max}" step="${step}" value="${val}"/>
-          <span class="slider-val" id="val_warm_temp">${val} ${unit}</span>
-        </div>`);
-    }
+          <span class="slider-val" id="val_warm_temp">${val} ${unit}</span></div>`;
+      }
 
-    if (cfg.entity_warm_time) {
-      const st = this._stateOf("entity_warm_time");
-      const val = parseFloat(st?.state || 0);
-      const min = st?.attributes?.min || 1;
-      const max = st?.attributes?.max || 60;
-      const step = st?.attributes?.step || 1;
-      const unit = st?.attributes?.unit_of_measurement || "min";
-      sections.warm.push(`
-        <div class="slider-row">
-          <ha-icon icon="mdi:timer-outline"></ha-icon>
+      if (cfg.entity_warm_time) {
+        const st = this._stateOf("entity_warm_time");
+        const val = parseFloat(st?.state || 0);
+        const min = st?.attributes?.min || 1, max = st?.attributes?.max || 60, step = st?.attributes?.step || 1;
+        const unit = st?.attributes?.unit_of_measurement || "min";
+        html += `<div class="slider-row"><ha-icon icon="mdi:timer-outline"></ha-icon>
           <input type="range" id="slider_warm_time" min="${min}" max="${max}" step="${step}" value="${val}"/>
-          <span class="slider-val" id="val_warm_time">${val} ${unit}</span>
-        </div>`);
-    }
+          <span class="slider-val" id="val_warm_time">${val} ${unit}</span></div>`;
+      }
 
-    if (cfg.entity_cook_method) {
-      const st = this._stateOf("entity_cook_method");
-      const current = st?.state || "";
-      const options = st?.attributes?.options || [];
-      const opts = options.map((o) => `<option value="${o}" ${o === current ? "selected" : ""}>${o}</option>`).join("");
-      sections.warm.push(`
-        <div class="select-row">
-          <ha-icon icon="mdi:chef-hat"></ha-icon>
-          <select id="sel_cook_method">${opts}</select>
-        </div>`);
-    }
+      if (cfg.entity_cook_method) {
+        const st = this._stateOf("entity_cook_method");
+        const current = st?.state || "";
+        const options = st?.attributes?.options || [];
+        const opts = options.map((o) => `<option value="${o}" ${o === current ? "selected" : ""}>${o}</option>`).join("");
+        html += `<div class="select-row"><ha-icon icon="mdi:chef-hat"></ha-icon>
+          <select id="sel_cook_method">${opts}</select></div>`;
+      }
 
-    // HTML zusammenbauen
-    let html = "";
-    if (sections.main.length) {
-      html += `<span class="section-label">Manuelle Steuerung</span>`;
-      html += sections.main.join("");
+      colWarm.innerHTML = html;
+      this._bindWarmEvents(colWarm);
     }
-    if (sections.actions.length) html += sections.actions.join("");
-    if (sections.warm.length && (sections.main.length || sections.actions.length)) {
-      html += `<hr class="divider"/>`;
-    }
-    if (sections.warm.length) {
-      html += `<span class="section-label">Warmhalten & Einstellungen</span>`;
-      html += sections.warm.join("");
-    }
-
-    container.innerHTML = html;
-    this._bindControlEvents(container);
   }
 
-  _bindControlEvents(c) {
+  _bindMainEvents(c) {
     const cfg = this._config;
 
-    // Toggles
     const tp = c.querySelector("#toggle_power");
     if (tp) tp.addEventListener("change", () =>
       this._callService("switch", tp.checked ? "turn_on" : "turn_off", cfg.entity_power));
 
-    const tph = c.querySelector("#toggle_preheat");
-    if (tph) tph.addEventListener("change", () =>
-      this._callService("switch", tph.checked ? "turn_on" : "turn_off", cfg.entity_preheat));
-
-    // Slider Temperatur
-    const st = c.querySelector("#slider_temp");
-    const vt = c.querySelector("#val_temp");
+    const st = c.querySelector("#slider_temp"), vt = c.querySelector("#val_temp");
     if (st) {
       const unit = this._stateOf("entity_temp")?.attributes?.unit_of_measurement || "°C";
-      st.addEventListener("input", () => { vt.textContent = `${st.value} ${unit}`; });
-      st.addEventListener("change", () =>
-        this._callService("number", "set_value", cfg.entity_temp, { value: parseFloat(st.value) }));
+      st.addEventListener("input", () => vt.textContent = `${st.value} ${unit}`);
+      st.addEventListener("change", () => this._callService("number", "set_value", cfg.entity_temp, { value: parseFloat(st.value) }));
     }
 
-    // Slider Zeit
-    const stime = c.querySelector("#slider_time");
-    const vtime = c.querySelector("#val_time");
+    const stime = c.querySelector("#slider_time"), vtime = c.querySelector("#val_time");
     if (stime) {
       const unit = this._stateOf("entity_time")?.attributes?.unit_of_measurement || "min";
-      stime.addEventListener("input", () => { vtime.textContent = `${stime.value} ${unit}`; });
-      stime.addEventListener("change", () =>
-        this._callService("number", "set_value", cfg.entity_time, { value: parseFloat(stime.value) }));
+      stime.addEventListener("input", () => vtime.textContent = `${stime.value} ${unit}`);
+      stime.addEventListener("change", () => this._callService("number", "set_value", cfg.entity_time, { value: parseFloat(stime.value) }));
     }
 
-    // Slider Warmhaltetemperatur
-    const swt = c.querySelector("#slider_warm_temp");
-    const vwt = c.querySelector("#val_warm_temp");
-    if (swt) {
-      const unit = this._stateOf("entity_warm_temp")?.attributes?.unit_of_measurement || "°C";
-      swt.addEventListener("input", () => { vwt.textContent = `${swt.value} ${unit}`; });
-      swt.addEventListener("change", () =>
-        this._callService("number", "set_value", cfg.entity_warm_temp, { value: parseFloat(swt.value) }));
-    }
-
-    // Slider Warmhaltedauer
-    const swtime = c.querySelector("#slider_warm_time");
-    const vwtime = c.querySelector("#val_warm_time");
-    if (swtime) {
-      const unit = this._stateOf("entity_warm_time")?.attributes?.unit_of_measurement || "min";
-      swtime.addEventListener("input", () => { vwtime.textContent = `${swtime.value} ${unit}`; });
-      swtime.addEventListener("change", () =>
-        this._callService("number", "set_value", cfg.entity_warm_time, { value: parseFloat(swtime.value) }));
-    }
-
-    // Action-Buttons
     const bs = c.querySelector("#btn_start");
     if (bs) bs.addEventListener("click", () => this._callService("button", "press", cfg.entity_start));
     const bp = c.querySelector("#btn_pause");
     if (bp) bp.addEventListener("click", () => this._callService("button", "press", cfg.entity_pause));
     const bst = c.querySelector("#btn_stop");
     if (bst) bst.addEventListener("click", () => this._callService("button", "press", cfg.entity_stop));
+  }
+
+  _bindWarmEvents(c) {
+    const cfg = this._config;
+
+    const tph = c.querySelector("#toggle_preheat");
+    if (tph) tph.addEventListener("change", () =>
+      this._callService("switch", tph.checked ? "turn_on" : "turn_off", cfg.entity_preheat));
+
     const bkw = c.querySelector("#btn_keep_warm");
     if (bkw) bkw.addEventListener("click", () => this._callService("button", "press", cfg.entity_keep_warm));
 
-    // Select Kochmethode
+    const swt = c.querySelector("#slider_warm_temp"), vwt = c.querySelector("#val_warm_temp");
+    if (swt) {
+      const unit = this._stateOf("entity_warm_temp")?.attributes?.unit_of_measurement || "°C";
+      swt.addEventListener("input", () => vwt.textContent = `${swt.value} ${unit}`);
+      swt.addEventListener("change", () => this._callService("number", "set_value", cfg.entity_warm_temp, { value: parseFloat(swt.value) }));
+    }
+
+    const swtime = c.querySelector("#slider_warm_time"), vwtime = c.querySelector("#val_warm_time");
+    if (swtime) {
+      const unit = this._stateOf("entity_warm_time")?.attributes?.unit_of_measurement || "min";
+      swtime.addEventListener("input", () => vwtime.textContent = `${swtime.value} ${unit}`);
+      swtime.addEventListener("change", () => this._callService("number", "set_value", cfg.entity_warm_time, { value: parseFloat(swtime.value) }));
+    }
+
     const sel = c.querySelector("#sel_cook_method");
     if (sel) sel.addEventListener("change", () =>
       this._callService("select", "select_option", cfg.entity_cook_method, { option: sel.value }));
@@ -474,11 +430,10 @@ class HaAiryerCard extends HTMLElement {
     grid.innerHTML = this._scripts.map((state) => {
       const name = state.attributes.friendly_name || state.entity_id.replace("script.", "");
       const icon = state.attributes.icon || "mdi:chef-hat";
-      return `
-        <button class="script-btn" data-entity="${state.entity_id}">
-          <ha-icon icon="${icon}"></ha-icon>
-          <span class="name">${name}</span>
-        </button>`;
+      return `<button class="script-btn" data-entity="${state.entity_id}">
+        <ha-icon icon="${icon}"></ha-icon>
+        <span class="name">${name}</span>
+      </button>`;
     }).join("");
 
     grid.querySelectorAll(".script-btn").forEach((btn) => {
@@ -488,7 +443,7 @@ class HaAiryerCard extends HTMLElement {
   }
 
   getCardSize() {
-    return Math.ceil(this._scripts.length / this._config.columns) + 2;
+    return Math.ceil(this._scripts.length / this._config.columns) + 3;
   }
 
   static getConfigElement() {
@@ -511,7 +466,6 @@ class HaAiryerCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    // Entity-Dropdowns befüllen
     this.querySelectorAll("select[data-domain]").forEach((sel) => this._fillSelect(sel));
   }
 
@@ -520,16 +474,16 @@ class HaAiryerCardEditor extends HTMLElement {
     sel.dataset.filled = "1";
     const domains = sel.dataset.domain.split(",");
     const current = sel.dataset.current || "";
-    const candidates = Object.keys(this._hass.states)
+    Object.keys(this._hass.states)
       .filter((id) => domains.includes(id.split(".")[0]))
-      .sort();
-    candidates.forEach((id) => {
-      const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = this._hass.states[id]?.attributes?.friendly_name || id;
-      if (id === current) opt.selected = true;
-      sel.appendChild(opt);
-    });
+      .sort()
+      .forEach((id) => {
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = this._hass.states[id]?.attributes?.friendly_name || id;
+        if (id === current) opt.selected = true;
+        sel.appendChild(opt);
+      });
   }
 
   _field(label, id, type, value, extra = "") {
@@ -563,16 +517,14 @@ class HaAiryerCardEditor extends HTMLElement {
         ${this._field("Spalten", "columns", "number", c.columns || 3, 'min="1" max="6"')}
         ${this._field("Icon-Größe (px)", "icon_size", "number", c.icon_size || 28, 'min="16" max="64"')}
         ${this._field("Schriftgröße (em)", "font_size", "number", c.font_size || 0.75, 'min="0.5" max="2" step="0.05"')}
-
-        <b style="font-size:0.9em;color:var(--primary-text-color)">Manuelle Steuerung</b>
+        <b style="font-size:0.9em;color:var(--primary-text-color)">Manuelle Steuerung (links)</b>
         ${this._entitySelect("Stromversorgung", "entity_power", "switch")}
         ${this._entitySelect("Temperatur", "entity_temp", "number")}
         ${this._entitySelect("Kochzeit", "entity_time", "number")}
         ${this._entitySelect("Kochen starten", "entity_start", "button")}
         ${this._entitySelect("Pause", "entity_pause", "button")}
         ${this._entitySelect("Stopp", "entity_stop", "button")}
-
-        <b style="font-size:0.9em;color:var(--primary-text-color)">Warmhalten & Einstellungen</b>
+        <b style="font-size:0.9em;color:var(--primary-text-color)">Warmhalten & Einstellungen (rechts)</b>
         ${this._entitySelect("Vorheizen", "entity_preheat", "switch")}
         ${this._entitySelect("Warmhalten", "entity_keep_warm", "button")}
         ${this._entitySelect("Warmhaltetemperatur", "entity_warm_temp", "number")}
@@ -581,18 +533,14 @@ class HaAiryerCardEditor extends HTMLElement {
       </div>
     `;
 
-    // Text/Number Inputs
     ["title", "label", "columns", "icon_size", "font_size"].forEach((id) => {
-      const el = this.querySelector(`#${id}`);
-      if (!el) return;
-      el.addEventListener("change", (e) => {
+      this.querySelector(`#${id}`)?.addEventListener("change", (e) => {
         const num = ["columns", "icon_size", "font_size"].includes(id);
         this._config = { ...this._config, [id]: num ? parseFloat(e.target.value) : e.target.value };
         this._fireChange();
       });
     });
 
-    // Entity Selects
     CONTROLS.forEach(({ key }) => {
       const el = this.querySelector(`#${key}`);
       if (!el) return;
