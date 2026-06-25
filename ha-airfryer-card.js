@@ -46,10 +46,15 @@ class HaAiryerCard extends HTMLElement {
   _getScripts() {
     if (!this._hass) return [];
     const label = this._config.label;
+
+    // Labels sind in hass.entities (Entity Registry), nicht in hass.states
+    const entityRegistry = this._hass.entities || {};
+
     return Object.values(this._hass.states)
       .filter((state) => {
         if (!state.entity_id.startsWith("script.")) return false;
-        const labels = state.attributes.labels || [];
+        const regEntry = entityRegistry[state.entity_id];
+        const labels = regEntry?.labels || [];
         return labels.includes(label);
       })
       .sort((a, b) =>
@@ -145,6 +150,13 @@ class HaAiryerCard extends HTMLElement {
           font-size: 0.85em;
           padding: 16px 0;
         }
+        .debug {
+          grid-column: 1 / -1;
+          font-size: 0.7em;
+          color: var(--secondary-text-color);
+          padding: 4px;
+          word-break: break-all;
+        }
       </style>
       <ha-card>
         <div class="header">
@@ -168,7 +180,15 @@ class HaAiryerCard extends HTMLElement {
     this._scripts = this._getScripts();
 
     if (this._scripts.length === 0) {
-      grid.innerHTML = `<div class="empty">Keine Rezepte gefunden.<br>Tippe auf + um ein neues anzulegen.</div>`;
+      // Debug-Info: zeige ob hass.entities verfügbar ist
+      const hasEntities = this._hass && this._hass.entities;
+      const scriptCount = this._hass
+        ? Object.keys(this._hass.states).filter((k) => k.startsWith("script.")).length
+        : 0;
+      grid.innerHTML = `
+        <div class="empty">Keine Rezepte gefunden.<br>Tippe auf + um ein neues anzulegen.</div>
+        <div class="debug">Label: "${this._config.label}" · hass.entities: ${hasEntities ? "✓" : "✗"} · Skripte gesamt: ${scriptCount}</div>
+      `;
       return;
     }
 
