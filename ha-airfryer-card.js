@@ -55,7 +55,7 @@ class HaAiryerCard extends HTMLElement {
         if (!state.entity_id.startsWith("script.")) return false;
         const regEntry = entityRegistry[state.entity_id];
         const labels = regEntry?.labels || [];
-        return labels.includes(label);
+        return labels.some((l) => l.toLowerCase() === label.toLowerCase());
       })
       .sort((a, b) =>
         (a.attributes.friendly_name || a.entity_id).localeCompare(
