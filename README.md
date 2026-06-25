@@ -3,6 +3,14 @@
 Lovelace-Karte für Home Assistant zur Steuerung und Verwaltung von
 Airfryer-Rezepten.
 
+## Voraussetzungen
+
+Diese Karte funktioniert am besten zusammen mit dem Blueprint-Repo
+[ha-airfryer-presets](https://github.com/Noack1978/ha-airfryer-presets),
+das das Skript-Blueprint "Airfryer Einstellung starten" bereitstellt.
+Damit lassen sich Rezepte (Temperatur + Kochzeit) als wiederverwendbare
+Skripte anlegen, die dann automatisch in dieser Karte erscheinen.
+
 ## Funktionen
 
 - **Manuelle Steuerung**: Temperatur, Kochzeit, Stromversorgung, Start/Pause/Stopp
