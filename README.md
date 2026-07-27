@@ -18,7 +18,9 @@ Skripte anlegen, die dann automatisch in dieser Karte erscheinen.
 - **Aktions-Buttons**: Start, Pause, Stopp (farbig hervorgehoben)
 - **Stromversorgung**: Toggle-Schalter
 - **Warmhalten & Einstellungen**: Vorheizen, Warmhalten, Warmhaltetemperatur,
-  Warmhaltedauer, Kochmethode – alle optional
+  Warmhaltedauer, Kochmethode, Meine Voreinstellungen, Rezepte aktualisieren
+- **Dropdowns**: Kochmethode und Voreinstellungen als natives Shadow-DOM-Dropdown
+  (kein Überlappen mit anderen Elementen)
 - **Rezepte**: Alle Skripte mit konfiguriertem Label werden automatisch
   als Buttons angezeigt
 - **Responsives Layout**: Ab 480px Kartenbreite werden Steuerung (links)
@@ -74,6 +76,8 @@ entity_keep_warm: button.airfryer_hd9280_warmhalten
 entity_warm_temp: number.airfryer_hd9280_warmhaltetemperatur
 entity_warm_time: number.airfryer_hd9280_warmhaltedauer
 entity_cook_method: select.airfryer_hd9280_kochmethode
+entity_presets: select.airfryer_hd9280_meine_voreinstellungen
+entity_update: button.airfryer_hd9280_rezepte_aktualisieren
 ```
 
 Alle `entity_*`-Felder sind optional – nicht konfigurierte Elemente werden
@@ -89,7 +93,7 @@ ausgeblendet.
 | `icon_size` | `28` | Icon-Größe der Rezept-Buttons in px |
 | `font_size` | `0.75` | Schriftgröße der Rezept-Buttons in em |
 | `blueprint_path` | `/config/blueprint/dashboard` | Pfad für den +-Button |
-| `temp_steps` | `[5, 10]` | Schrittgrößen für Temperatur-Buttons (kommagetrennt) |
+| `temp_steps` | `[5, 10]` | Schrittgrößen für Temperatur-Buttons |
 | `temp_presets` | `[]` | Schnellwahl-Werte für Temperatur, z.B. `[180, 190, 200]` |
 | `time_steps` | `[1, 5]` | Schrittgrößen für Kochzeit-Buttons |
 | `time_presets` | `[]` | Schnellwahl-Werte für Kochzeit in Minuten |
@@ -106,20 +110,8 @@ ausgeblendet.
 | `entity_warm_temp` | – | Warmhaltetemperatur (`number`) |
 | `entity_warm_time` | – | Warmhaltedauer (`number`) |
 | `entity_cook_method` | – | Kochmethode (`select`) |
-
-### Temperatur- und Zeit-Steuerung
-
-Für Temperatur und Kochzeit werden +/− Buttons generiert:
-
-```
-🌡 180 °C
-[−10] [−5] [+5] [+10]
-[180°C] [190°C] [200°C]   ← Schnellwahl (optional)
-```
-
-Die Schrittgrößen (`temp_steps`) und Schnellwahl-Werte (`temp_presets`)
-sind frei konfigurierbar – sowohl im visuellen Editor (kommagetrennte
-Eingabe) als auch per YAML (Liste).
+| `entity_presets` | – | Meine Voreinstellungen (`select`) |
+| `entity_update` | – | Rezepte aktualisieren (`button`) |
 
 ## Rezepte anlegen
 
@@ -138,6 +130,7 @@ Eingabe) als auch per YAML (Liste).
 | v1.2.0 | Warmhalten & Einstellungen (Vorheizen, Warmhaltetemperatur, Warmhaltedauer, Kochmethode) |
 | v1.3.0 | Responsives zwei-Spalten-Layout (ab 480px Kartenbreite) |
 | v1.4.0 | Slider ersetzt durch +/− Buttons mit konfigurierbaren Schrittgrößen und Schnellwahl-Buttons |
+| v1.5.0 | Dropdown-Bug behoben (Custom Shadow-DOM-Dropdown); Meine Voreinstellungen und Rezepte aktualisieren hinzugefügt |
 
 ---
 
