@@ -7,19 +7,19 @@ const DEFAULT_LABEL = "airfryer";
 const DEFAULT_BLUEPRINT_PATH = "/config/blueprint/dashboard";
 
 const CONTROLS = [
-  { key: "entity_power",        label: "Stromversorgung",      type: "switch",  section: "main" },
-  { key: "entity_temp",         label: "Temperatur",           type: "number",  section: "main" },
-  { key: "entity_time",         label: "Kochzeit",             type: "number",  section: "main" },
-  { key: "entity_start",        label: "Kochen starten",       type: "button",  section: "actions" },
-  { key: "entity_pause",        label: "Pause",                type: "button",  section: "actions" },
-  { key: "entity_stop",         label: "Stopp",                type: "button",  section: "actions" },
-  { key: "entity_preheat",      label: "Vorheizen",            type: "switch",  section: "warm" },
-  { key: "entity_keep_warm",    label: "Warmhalten",           type: "button",  section: "warm" },
-  { key: "entity_warm_temp",    label: "Warmhaltetemperatur",  type: "number",  section: "warm" },
-  { key: "entity_warm_time",    label: "Warmhaltedauer",       type: "number",  section: "warm" },
-  { key: "entity_cook_method",  label: "Kochmethode",          type: "select",  section: "warm" },
-  { key: "entity_presets",      label: "Meine Voreinstellungen", type: "select", section: "warm" },
-  { key: "entity_update",       label: "Rezepte aktualisieren", type: "button", section: "warm" },
+  { key: "entity_power",        label: "Stromversorgung",       type: "switch",  section: "main" },
+  { key: "entity_temp",         label: "Temperatur",            type: "number",  section: "main" },
+  { key: "entity_time",         label: "Kochzeit",              type: "number",  section: "main" },
+  { key: "entity_start",        label: "Kochen starten",        type: "button",  section: "actions" },
+  { key: "entity_pause",        label: "Pause",                 type: "button",  section: "actions" },
+  { key: "entity_stop",         label: "Stopp",                 type: "button",  section: "actions" },
+  { key: "entity_preheat",      label: "Vorheizen",             type: "switch",  section: "warm" },
+  { key: "entity_keep_warm",    label: "Warmhalten",            type: "button",  section: "warm" },
+  { key: "entity_warm_temp",    label: "Warmhaltetemperatur",   type: "number",  section: "warm" },
+  { key: "entity_warm_time",    label: "Warmhaltedauer",        type: "number",  section: "warm" },
+  { key: "entity_cook_method",  label: "Kochmethode",           type: "select",  section: "warm" },
+  { key: "entity_presets",      label: "Meine Voreinstellungen",type: "select",  section: "warm" },
+  { key: "entity_update",       label: "Rezepte aktualisieren", type: "button",  section: "warm" },
 ];
 
 class HaAiryerCard extends HTMLElement {
@@ -31,6 +31,7 @@ class HaAiryerCard extends HTMLElement {
     this._scripts = [];
     this._initialized = false;
     this._openSelect = null;
+    this._overlay = null;
   }
 
   setConfig(config) {
@@ -105,8 +106,9 @@ class HaAiryerCard extends HTMLElement {
     const cur = parseFloat(st.state);
     const min = parseFloat(st.attributes.min ?? -Infinity);
     const max = parseFloat(st.attributes.max ?? Infinity);
-    const newVal = Math.min(max, Math.max(min, cur + delta));
-    this._callService("number", "set_value", this._config[key], { value: newVal });
+    this._callService("number", "set_value", this._config[key], {
+      value: Math.min(max, Math.max(min, cur + delta))
+    });
   }
 
   _setNumber(key, val) {
@@ -114,7 +116,9 @@ class HaAiryerCard extends HTMLElement {
     if (!st) return;
     const min = parseFloat(st.attributes.min ?? -Infinity);
     const max = parseFloat(st.attributes.max ?? Infinity);
-    this._callService("number", "set_value", this._config[key], { value: Math.min(max, Math.max(min, val)) });
+    this._callService("number", "set_value", this._config[key], {
+      value: Math.min(max, Math.max(min, val))
+    });
   }
 
   _hasMain() {
@@ -123,8 +127,8 @@ class HaAiryerCard extends HTMLElement {
   }
 
   _hasWarm() {
-    return ["entity_preheat","entity_keep_warm","entity_warm_temp","entity_warm_time","entity_cook_method","entity_presets","entity_update"]
-      .some((k) => this._config[k]);
+    return ["entity_preheat","entity_keep_warm","entity_warm_temp","entity_warm_time",
+            "entity_cook_method","entity_presets","entity_update"].some((k) => this._config[k]);
   }
 
   _numberControl(key, icon, stepCfgKey, presetCfgKey) {
@@ -156,29 +160,100 @@ class HaAiryerCard extends HTMLElement {
       </div>`;
   }
 
-  // Custom Dropdown das im Shadow DOM bleibt
-  _selectControl(key, icon) {
+  // Dropdown-Trigger (kein Menü hier, nur der Button)
+  _selectTrigger(key, icon) {
     const st = this._stateOf(key);
     if (!st) return "";
     const current = st.state || "";
-    const options = st.attributes.options || [];
-    const optItems = options.map((o) =>
-      `<div class="opt-item ${o === current ? "opt-selected" : ""}" data-key="${key}" data-val="${o}">${o}</div>`
-    ).join("");
-
     return `
-      <div class="custom-select-wrap" id="wrap_${key}">
-        <div class="select-row">
-          <ha-icon icon="${icon}"></ha-icon>
-          <div class="custom-select" id="sel_${key}">
-            <div class="sel-current" id="selcur_${key}">${current}</div>
-            <ha-icon icon="mdi:chevron-down" class="sel-arrow"></ha-icon>
-          </div>
-        </div>
-        <div class="opt-list" id="opts_${key}" style="display:none">
-          ${optItems}
+      <div class="select-row" id="trigger_${key}">
+        <ha-icon icon="${icon}"></ha-icon>
+        <div class="sel-trigger" id="sel_${key}" data-key="${key}">
+          <span class="sel-current">${current}</span>
+          <ha-icon icon="mdi:chevron-down" class="sel-arrow"></ha-icon>
         </div>
       </div>`;
+  }
+
+  // Overlay-Dropdown öffnen (angehängt an document.body, über allem)
+  _openDropdown(key) {
+    this._closeDropdown();
+
+    const st = this._stateOf(key);
+    if (!st) return;
+    const current = st.state || "";
+    const options = st.attributes.options || [];
+
+    const trigger = this.shadowRoot.getElementById(`sel_${key}`);
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+
+    // Overlay-Container
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 9999;
+    `;
+
+    // Menü
+    const menu = document.createElement("div");
+    const menuTop = Math.min(rect.bottom + 4, window.innerHeight - 200);
+    menu.style.cssText = `
+      position: fixed;
+      top: ${menuTop}px;
+      left: ${rect.left}px;
+      width: ${rect.width}px;
+      background: var(--card-background-color, #1c1c1c);
+      border: 1px solid var(--primary-color);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      overflow-y: auto;
+      max-height: 220px;
+      z-index: 10000;
+    `;
+
+    options.forEach((opt) => {
+      const item = document.createElement("div");
+      item.textContent = opt;
+      item.style.cssText = `
+        padding: 10px 14px;
+        font-size: 0.9em;
+        cursor: pointer;
+        color: ${opt === current ? "var(--primary-color)" : "var(--primary-text-color, #fff)"};
+        font-weight: ${opt === current ? "600" : "normal"};
+        background: transparent;
+      `;
+      item.addEventListener("mouseenter", () => item.style.background = "rgba(255,255,255,0.08)");
+      item.addEventListener("mouseleave", () => item.style.background = "transparent");
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this._callService("select", "select_option", this._config[key], { option: opt });
+        // Trigger-Text aktualisieren
+        const cur = this.shadowRoot.querySelector(`#sel_${key} .sel-current`);
+        if (cur) cur.textContent = opt;
+        this._closeDropdown();
+      });
+      menu.appendChild(item);
+    });
+
+    overlay.appendChild(menu);
+    overlay.addEventListener("click", () => this._closeDropdown());
+    document.body.appendChild(overlay);
+    this._overlay = overlay;
+    this._openSelect = key;
+  }
+
+  _closeDropdown() {
+    if (this._overlay) {
+      document.body.removeChild(this._overlay);
+      this._overlay = null;
+    }
+    this._openSelect = null;
+  }
+
+  disconnectedCallback() {
+    this._closeDropdown();
   }
 
   _render() {
@@ -206,7 +281,7 @@ class HaAiryerCard extends HTMLElement {
         }
         .add-btn:hover { opacity: 0.85; }
 
-        .controls-wrapper { display: flex; flex-direction: column; gap: 0; margin-bottom: 12px; }
+        .controls-wrapper { display: flex; flex-direction: column; margin-bottom: 12px; }
         @container (min-width: 480px) {
           .controls-wrapper { flex-direction: row; gap: 12px; }
           .col-main { flex: 1; border-right: 1px solid var(--divider-color, rgba(255,255,255,0.1)); padding-right: 12px; }
@@ -268,34 +343,18 @@ class HaAiryerCard extends HTMLElement {
         .action-btn.update { background: var(--secondary-background-color); color: var(--primary-text-color); flex: none; padding: 8px 14px; flex-direction: row; gap: 6px; border: 1px solid var(--divider-color); }
         .action-btn:hover { opacity: 0.85; }
 
-        /* Custom Select */
-        .custom-select-wrap { position: relative; padding: 4px; }
-        .select-row { display: flex; align-items: center; gap: 8px; }
+        /* Select Trigger */
+        .select-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; }
         .select-row > ha-icon { --mdc-icon-size: 18px; color: var(--primary-color); flex-shrink: 0; }
-        .custom-select {
+        .sel-trigger {
           flex: 1; display: flex; align-items: center; justify-content: space-between;
-          padding: 6px 10px; border-radius: 8px; cursor: pointer;
+          padding: 7px 10px; border-radius: 8px; cursor: pointer;
           border: 1px solid var(--divider-color);
-          background: var(--card-background-color);
-          color: var(--primary-text-color); font-size: 0.85em;
-          user-select: none;
+          background: var(--secondary-background-color, #2c2c2c);
+          color: var(--primary-text-color); font-size: 0.85em; user-select: none;
         }
-        .custom-select:hover { border-color: var(--primary-color); }
+        .sel-trigger:hover { border-color: var(--primary-color); }
         .sel-arrow { --mdc-icon-size: 16px; color: var(--secondary-text-color); flex-shrink: 0; }
-        .opt-list {
-          position: absolute; left: 4px; right: 4px; top: calc(100% - 4px);
-          background: var(--card-background-color);
-          border: 1px solid var(--primary-color);
-          border-radius: 8px; z-index: 999; overflow: hidden;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-        }
-        .opt-item {
-          padding: 8px 12px; font-size: 0.85em; cursor: pointer;
-          color: var(--primary-text-color);
-          transition: background 0.12s;
-        }
-        .opt-item:hover { background: var(--secondary-background-color); }
-        .opt-item.opt-selected { color: var(--primary-color); font-weight: 600; }
 
         .recipe-divider { border: none; border-top: 1px solid var(--divider-color, rgba(255,255,255,0.1)); margin: 0 0 12px; }
 
@@ -331,36 +390,8 @@ class HaAiryerCard extends HTMLElement {
     this.shadowRoot.getElementById("add-btn")
       .addEventListener("click", () => this._navigate(blueprint_path));
 
-    // Klick außerhalb schließt Dropdowns
-    this.shadowRoot.addEventListener("mousedown", (e) => {
-      if (!this._openSelect) return;
-      const wrap = this.shadowRoot.getElementById(`wrap_${this._openSelect}`);
-      if (wrap && !wrap.contains(e.target)) {
-        this._closeSelect(this._openSelect);
-      }
-    });
-    this.shadowRoot.addEventListener("touchstart", (e) => {
-      if (!this._openSelect) return;
-      const wrap = this.shadowRoot.getElementById(`wrap_${this._openSelect}`);
-      if (wrap && !wrap.contains(e.target)) {
-        this._closeSelect(this._openSelect);
-      }
-    }, { passive: true });
-
     if (hasControls) this._updateControls();
     this._renderButtons();
-  }
-
-  _openSelectMenu(key) {
-    if (this._openSelect && this._openSelect !== key) this._closeSelect(this._openSelect);
-    const opts = this.shadowRoot.getElementById(`opts_${key}`);
-    if (opts) { opts.style.display = "block"; this._openSelect = key; }
-  }
-
-  _closeSelect(key) {
-    const opts = this.shadowRoot.getElementById(`opts_${key}`);
-    if (opts) opts.style.display = "none";
-    if (this._openSelect === key) this._openSelect = null;
   }
 
   _updateControls() {
@@ -377,14 +408,13 @@ class HaAiryerCard extends HTMLElement {
           <label class="toggle"><input type="checkbox" id="toggle_power" ${on ? "checked" : ""}/>
           <span class="toggle-slider"></span></label></div>`;
       }
-
       if (cfg.entity_temp) html += this._numberControl("entity_temp", "mdi:thermometer", "temp_steps", "temp_presets");
       if (cfg.entity_time) html += this._numberControl("entity_time", "mdi:timer", "time_steps", "time_presets");
 
       const actionBtns = [];
       if (cfg.entity_start) actionBtns.push(`<button class="action-btn start" id="btn_start"><ha-icon icon="mdi:play"></ha-icon>Starten</button>`);
       if (cfg.entity_pause) actionBtns.push(`<button class="action-btn pause" id="btn_pause"><ha-icon icon="mdi:pause"></ha-icon>Pause</button>`);
-      if (cfg.entity_stop)  actionBtns.push(`<button class="action-btn stop" id="btn_stop"><ha-icon icon="mdi:stop"></ha-icon>Stopp</button>`);
+      if (cfg.entity_stop)  actionBtns.push(`<button class="action-btn stop"  id="btn_stop"><ha-icon icon="mdi:stop"></ha-icon>Stopp</button>`);
       if (actionBtns.length) html += `<div class="action-row">${actionBtns.join("")}</div>`;
 
       colMain.innerHTML = html;
@@ -408,10 +438,10 @@ class HaAiryerCard extends HTMLElement {
       if (cfg.entity_update)    warmBtns.push(`<button class="action-btn update" id="btn_update"><ha-icon icon="mdi:refresh"></ha-icon>Aktualisieren</button>`);
       if (warmBtns.length) html += `<div class="action-row">${warmBtns.join("")}</div>`;
 
-      if (cfg.entity_warm_temp) html += this._numberControl("entity_warm_temp", "mdi:thermometer-lines", "warm_temp_steps", null);
-      if (cfg.entity_warm_time) html += this._numberControl("entity_warm_time", "mdi:timer-outline", "warm_time_steps", null);
-      if (cfg.entity_cook_method) html += this._selectControl("entity_cook_method", "mdi:chef-hat");
-      if (cfg.entity_presets)    html += this._selectControl("entity_presets", "mdi:bookmark-outline");
+      if (cfg.entity_warm_temp)    html += this._numberControl("entity_warm_temp", "mdi:thermometer-lines", "warm_temp_steps", null);
+      if (cfg.entity_warm_time)    html += this._numberControl("entity_warm_time", "mdi:timer-outline", "warm_time_steps", null);
+      if (cfg.entity_cook_method)  html += this._selectTrigger("entity_cook_method", "mdi:chef-hat");
+      if (cfg.entity_presets)      html += this._selectTrigger("entity_presets", "mdi:bookmark-outline");
 
       colWarm.innerHTML = html;
       this._bindWarmEvents(colWarm);
@@ -425,12 +455,10 @@ class HaAiryerCard extends HTMLElement {
     if (tp) tp.addEventListener("change", () =>
       this._callService("switch", tp.checked ? "turn_on" : "turn_off", cfg.entity_power));
 
-    c.querySelectorAll(".adj-btn").forEach((btn) => {
-      btn.addEventListener("click", () => this._adjustNumber(btn.dataset.key, parseFloat(btn.dataset.delta)));
-    });
-    c.querySelectorAll(".preset-btn").forEach((btn) => {
-      btn.addEventListener("click", () => this._setNumber(btn.dataset.key, parseFloat(btn.dataset.val)));
-    });
+    c.querySelectorAll(".adj-btn").forEach((btn) =>
+      btn.addEventListener("click", () => this._adjustNumber(btn.dataset.key, parseFloat(btn.dataset.delta))));
+    c.querySelectorAll(".preset-btn").forEach((btn) =>
+      btn.addEventListener("click", () => this._setNumber(btn.dataset.key, parseFloat(btn.dataset.val))));
 
     const bs = c.querySelector("#btn_start");
     if (bs) bs.addEventListener("click", () => this._callService("button", "press", cfg.entity_start));
@@ -449,42 +477,24 @@ class HaAiryerCard extends HTMLElement {
 
     const bkw = c.querySelector("#btn_keep_warm");
     if (bkw) bkw.addEventListener("click", () => this._callService("button", "press", cfg.entity_keep_warm));
-
     const bup = c.querySelector("#btn_update");
     if (bup) bup.addEventListener("click", () => this._callService("button", "press", cfg.entity_update));
 
-    c.querySelectorAll(".adj-btn").forEach((btn) => {
-      btn.addEventListener("click", () => this._adjustNumber(btn.dataset.key, parseFloat(btn.dataset.delta)));
-    });
+    c.querySelectorAll(".adj-btn").forEach((btn) =>
+      btn.addEventListener("click", () => this._adjustNumber(btn.dataset.key, parseFloat(btn.dataset.delta))));
 
-    // Custom Select Events
+    // Select Trigger Events
     ["entity_cook_method", "entity_presets"].forEach((key) => {
       if (!cfg[key]) return;
-      const sel = c.querySelector(`#sel_${key}`);
-      if (sel) sel.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const opts = this.shadowRoot.getElementById(`opts_${key}`);
-        if (opts && opts.style.display === "block") {
-          this._closeSelect(key);
-        } else {
-          this._openSelectMenu(key);
-        }
-      });
-
-      const optList = c.querySelector(`#opts_${key}`);
-      if (optList) {
-        optList.querySelectorAll(".opt-item").forEach((item) => {
-          // mousedown: verhindert dass der globale Handler das Menü schließt
-          item.addEventListener("mousedown", (e) => e.preventDefault());
-          item.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const val = item.dataset.val;
-            this._callService("select", "select_option", cfg[key], { option: val });
-            const cur = this.shadowRoot.getElementById(`selcur_${key}`);
-            if (cur) cur.textContent = val;
-            optList.querySelectorAll(".opt-item").forEach((i) => i.classList.toggle("opt-selected", i.dataset.val === val));
-            this._closeSelect(key);
-          });
+      const trigger = c.querySelector(`#sel_${key}`);
+      if (trigger) {
+        trigger.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (this._openSelect === key) {
+            this._closeDropdown();
+          } else {
+            this._openDropdown(key);
+          }
         });
       }
     });
@@ -509,10 +519,9 @@ class HaAiryerCard extends HTMLElement {
       </button>`;
     }).join("");
 
-    grid.querySelectorAll(".script-btn").forEach((btn) => {
+    grid.querySelectorAll(".script-btn").forEach((btn) =>
       btn.addEventListener("click", () =>
-        this._hass.callService("script", "turn_on", { entity_id: btn.dataset.entity }));
-    });
+        this._hass.callService("script", "turn_on", { entity_id: btn.dataset.entity })));
   }
 
   getCardSize() {
@@ -610,7 +619,6 @@ class HaAiryerCardEditor extends HTMLElement {
         ${this._field("Spalten", "columns", "number", c.columns || 3, 'min="1" max="6"')}
         ${this._field("Icon-Größe (px)", "icon_size", "number", c.icon_size || 28, 'min="16" max="64"')}
         ${this._field("Schriftgröße (em)", "font_size", "number", c.font_size || 0.75, 'min="0.5" max="2" step="0.05"')}
-
         ${this._section("Manuelle Steuerung (links)")}
         ${this._entitySelect("Stromversorgung", "entity_power", "switch")}
         ${this._entitySelect("Temperatur", "entity_temp", "number")}
@@ -622,7 +630,6 @@ class HaAiryerCardEditor extends HTMLElement {
         ${this._entitySelect("Kochen starten", "entity_start", "button")}
         ${this._entitySelect("Pause", "entity_pause", "button")}
         ${this._entitySelect("Stopp", "entity_stop", "button")}
-
         ${this._section("Warmhalten & Einstellungen (rechts)")}
         ${this._entitySelect("Vorheizen", "entity_preheat", "switch")}
         ${this._entitySelect("Warmhalten", "entity_keep_warm", "button")}
@@ -636,9 +643,9 @@ class HaAiryerCardEditor extends HTMLElement {
       </div>
     `;
 
-    ["title", "label", "columns", "icon_size", "font_size"].forEach((id) => {
+    ["title","label","columns","icon_size","font_size"].forEach((id) => {
       this.querySelector(`#${id}`)?.addEventListener("change", (e) => {
-        const num = ["columns", "icon_size", "font_size"].includes(id);
+        const num = ["columns","icon_size","font_size"].includes(id);
         this._config = { ...this._config, [id]: num ? parseFloat(e.target.value) : e.target.value };
         this._fireChange();
       });
