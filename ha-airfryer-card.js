@@ -332,11 +332,20 @@ class HaAiryerCard extends HTMLElement {
       .addEventListener("click", () => this._navigate(blueprint_path));
 
     // Klick außerhalb schließt Dropdowns
-    this.shadowRoot.addEventListener("click", (e) => {
-      if (this._openSelect && !e.target.closest(`#wrap_${this._openSelect}`)) {
+    this.shadowRoot.addEventListener("mousedown", (e) => {
+      if (!this._openSelect) return;
+      const wrap = this.shadowRoot.getElementById(`wrap_${this._openSelect}`);
+      if (wrap && !wrap.contains(e.target)) {
         this._closeSelect(this._openSelect);
       }
     });
+    this.shadowRoot.addEventListener("touchstart", (e) => {
+      if (!this._openSelect) return;
+      const wrap = this.shadowRoot.getElementById(`wrap_${this._openSelect}`);
+      if (wrap && !wrap.contains(e.target)) {
+        this._closeSelect(this._openSelect);
+      }
+    }, { passive: true });
 
     if (hasControls) this._updateControls();
     this._renderButtons();
@@ -465,6 +474,8 @@ class HaAiryerCard extends HTMLElement {
       const optList = c.querySelector(`#opts_${key}`);
       if (optList) {
         optList.querySelectorAll(".opt-item").forEach((item) => {
+          // mousedown: verhindert dass der globale Handler das Menü schließt
+          item.addEventListener("mousedown", (e) => e.preventDefault());
           item.addEventListener("click", (e) => {
             e.stopPropagation();
             const val = item.dataset.val;
