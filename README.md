@@ -109,7 +109,7 @@ ausgeblendet.
 | `entity_keep_warm` | – | Warmhalten (`button`) |
 | `entity_warm_temp` | – | Warmhaltetemperatur (`number`) |
 | `entity_warm_time` | – | Warmhaltedauer (`number`) |
-| `entity_cook_method` | – | Kochmethode (`select`) |
+| `entity_remaining` | – | Restlaufzeit in Sekunden (`sensor` oder `number`), wird als MM:SS angezeigt |
 | `entity_presets` | – | Meine Voreinstellungen (`select`) |
 | `entity_update` | – | Rezepte aktualisieren (`button`) |
 
@@ -130,7 +130,8 @@ ausgeblendet.
 | v1.2.0 | Warmhalten & Einstellungen (Vorheizen, Warmhaltetemperatur, Warmhaltedauer, Kochmethode) |
 | v1.3.0 | Responsives zwei-Spalten-Layout (ab 480px Kartenbreite) |
 | v1.4.0 | Slider ersetzt durch +/− Buttons mit konfigurierbaren Schrittgrößen und Schnellwahl-Buttons |
-| v1.5.0 | Dropdown-Bug behoben (Custom Shadow-DOM-Dropdown); Meine Voreinstellungen und Rezepte aktualisieren hinzugefügt |
+| v1.5.0 | Dropdown-Bug behoben (Body-Overlay); Meine Voreinstellungen und Rezepte aktualisieren hinzugefügt |
+| v1.6.0 | Restlaufzeit-Anzeige (MM:SS) hinzugefügt; Dropdown-Menü über allen Karten |
 
 ---
 

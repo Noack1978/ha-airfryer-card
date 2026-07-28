@@ -20,6 +20,7 @@ const CONTROLS = [
   { key: "entity_cook_method",  label: "Kochmethode",           type: "select",  section: "warm" },
   { key: "entity_presets",      label: "Meine Voreinstellungen",type: "select",  section: "warm" },
   { key: "entity_update",       label: "Rezepte aktualisieren", type: "button",  section: "warm" },
+  { key: "entity_remaining",    label: "Restlaufzeit",          type: "sensor",  section: "main" },
 ];
 
 class HaAiryerCard extends HTMLElement {
@@ -122,7 +123,7 @@ class HaAiryerCard extends HTMLElement {
   }
 
   _hasMain() {
-    return ["entity_power","entity_temp","entity_time","entity_start","entity_pause","entity_stop"]
+    return ["entity_power","entity_temp","entity_time","entity_start","entity_pause","entity_stop","entity_remaining"]
       .some((k) => this._config[k]);
   }
 
@@ -343,6 +344,19 @@ class HaAiryerCard extends HTMLElement {
         .action-btn.update { background: var(--secondary-background-color); color: var(--primary-text-color); flex: none; padding: 8px 14px; flex-direction: row; gap: 6px; border: 1px solid var(--divider-color); }
         .action-btn:hover { opacity: 0.85; }
 
+        /* Restlaufzeit */
+        .remaining-row {
+          display: flex; align-items: center; gap: 10px; padding: 6px 4px;
+        }
+        .remaining-row ha-icon { --mdc-icon-size: 18px; color: var(--primary-color); flex-shrink: 0; }
+        .remaining-val {
+          font-size: 1.6em; font-weight: 700; color: var(--primary-text-color);
+          font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+        }
+        .remaining-label {
+          font-size: 0.75em; color: var(--secondary-text-color);
+        }
+
         /* Select Trigger */
         .select-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; }
         .select-row > ha-icon { --mdc-icon-size: 18px; color: var(--primary-color); flex-shrink: 0; }
@@ -410,6 +424,22 @@ class HaAiryerCard extends HTMLElement {
       }
       if (cfg.entity_temp) html += this._numberControl("entity_temp", "mdi:thermometer", "temp_steps", "temp_presets");
       if (cfg.entity_time) html += this._numberControl("entity_time", "mdi:timer", "time_steps", "time_presets");
+
+      if (cfg.entity_remaining) {
+        const st = this._stateOf("entity_remaining");
+        const secs = parseFloat(st?.state || 0);
+        const mins = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60);
+        const display = `${mins}:${s.toString().padStart(2, "0")}`;
+        html += `
+          <div class="remaining-row">
+            <ha-icon icon="mdi:timer-sand"></ha-icon>
+            <div>
+              <div class="remaining-val" id="val_remaining">${display}</div>
+              <div class="remaining-label">Restlaufzeit</div>
+            </div>
+          </div>`;
+      }
 
       const actionBtns = [];
       if (cfg.entity_start) actionBtns.push(`<button class="action-btn start" id="btn_start"><ha-icon icon="mdi:play"></ha-icon>Starten</button>`);
@@ -630,6 +660,7 @@ class HaAiryerCardEditor extends HTMLElement {
         ${this._entitySelect("Kochen starten", "entity_start", "button")}
         ${this._entitySelect("Pause", "entity_pause", "button")}
         ${this._entitySelect("Stopp", "entity_stop", "button")}
+        ${this._entitySelect("Restlaufzeit", "entity_remaining", "sensor,number")}
         ${this._section("Warmhalten & Einstellungen (rechts)")}
         ${this._entitySelect("Vorheizen", "entity_preheat", "switch")}
         ${this._entitySelect("Warmhalten", "entity_keep_warm", "button")}
