@@ -40,6 +40,7 @@ class HaAiryerCard extends HTMLElement {
       label: config.label || DEFAULT_LABEL,
       columns: config.columns || 3,
       blueprint_path: config.blueprint_path || DEFAULT_BLUEPRINT_PATH,
+      blueprint_script_path: config.blueprint_script_path || "Noack1978/airfryer_preset.yaml",
       title: config.title || null,
       icon_size: config.icon_size || 28,
       font_size: config.font_size || 0.75,
@@ -676,7 +677,7 @@ class HaAiryerCard extends HTMLElement {
       alias: cleanName,
       icon: icon,
       use_blueprint: {
-        path: "airfryer_preset.yaml",
+        path: cfg.blueprint_script_path || "Noack1978/airfryer_preset.yaml",
         input: {
           temperatur: temp,
           kochzeit: time,
@@ -860,6 +861,7 @@ class HaAiryerCardEditor extends HTMLElement {
         ${this._field("Spalten", "columns", "number", c.columns || 3, 'min="1" max="6"')}
         ${this._field("Icon-Größe (px)", "icon_size", "number", c.icon_size || 28, 'min="16" max="64"')}
         ${this._field("Schriftgröße (em)", "font_size", "number", c.font_size || 0.75, 'min="0.5" max="2" step="0.05"')}
+        ${this._field("Blueprint-Pfad (Speichern)", "blueprint_script_path", "text", c.blueprint_script_path || "Noack1978/airfryer_preset.yaml")}
         ${this._section("Manuelle Steuerung (links)")}
         ${this._entitySelect("Stromversorgung", "entity_power", "switch")}
         ${this._entitySelect("Temperatur", "entity_temp", "number")}
@@ -885,7 +887,7 @@ class HaAiryerCardEditor extends HTMLElement {
       </div>
     `;
 
-    ["title","label","columns","icon_size","font_size"].forEach((id) => {
+    ["title","label","columns","icon_size","font_size","blueprint_script_path"].forEach((id) => {
       this.querySelector(`#${id}`)?.addEventListener("change", (e) => {
         const num = ["columns","icon_size","font_size"].includes(id);
         this._config = { ...this._config, [id]: num ? parseFloat(e.target.value) : e.target.value };
