@@ -65,8 +65,14 @@ class HaAiryerCard extends HTMLElement {
       this._initialized = true;
       this._render();
     } else {
-      // Steuerung nicht aktualisieren wenn Formular offen ist (würde Tastatur schließen)
+      // Formular schließen wenn ein neues Skript in der Karte erscheint
       const formOpen = this.shadowRoot.getElementById("save_form")?.style.display === "flex";
+      if (formOpen && newScripts !== prevScripts && newScripts.length > prevScripts.length) {
+        const form = this.shadowRoot.getElementById("save_form");
+        if (form) form.style.display = "none";
+        const status = this.shadowRoot.getElementById("save_status");
+        if (status) status.textContent = "";
+      }
       if (!formOpen) this._updateControls();
       if (prevScripts !== newScripts) this._renderButtons();
     }
