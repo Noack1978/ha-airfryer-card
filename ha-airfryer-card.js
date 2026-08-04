@@ -696,8 +696,13 @@ class HaAiryerCard extends HTMLElement {
     try {
       setStatus("Skript wird erstellt…");
 
-      // Skript anlegen via REST API
+      // Token aus hass.auth holen
       const token = this._hass.auth?.data?.access_token || "";
+      if (!token) {
+        throw new Error("Kein Access Token gefunden. Bitte HA neu laden.");
+      }
+
+      // Skript anlegen via REST API
       const resp = await fetch(`/api/config/script/config/${scriptId}`, {
         method: "POST",
         headers: {
@@ -712,26 +717,29 @@ class HaAiryerCard extends HTMLElement {
         throw new Error(`HTTP ${resp.status}: ${text}`);
       }
 
-      setStatus("Label wird zugewiesen…");
-
-      // Label zuweisen via WebSocket (zuverlässiger als REST)
-      await new Promise((resolve) => {
-        this._hass.connection.sendMessagePromise({
-          type: "config/entity_registry/update",
-          entity_id: `script.${scriptId}`,
-          labels: [cfg.label || DEFAULT_LABEL],
-        }).then(resolve).catch(resolve); // Fehler ignorieren, Label ist optional
-      });
-
       setStatus("Skripte werden neu geladen…");
       await this._hass.callService("script", "reload", {});
 
-      setStatus(`✓ "${cleanName}" gespeichert!`, "var(--success-color, #43a047)");
+      // Kurz warten damit Entity Registry aktualisiert wird
+      await new Promise((r) => setTimeout(r, 1500));
+
+      setStatus("Label wird zugewiesen…");
+      try {
+        await this._hass.connection.sendMessagePromise({
+          type: "config/entity_registry/update",
+          entity_id: `script.${scriptId}`,
+          labels: [cfg.label || DEFAULT_LABEL],
+        });
+      } catch (labelErr) {
+        console.warn("ha-airfryer-card: Label-Zuweisung fehlgeschlagen", labelErr);
+      }
+
+      setStatus("✓ Gespeichert! Formular schließt in 3s…", "var(--success-color, #43a047)");
       setTimeout(() => {
         const form = this.shadowRoot.querySelector("#save_form");
         if (form) form.style.display = "none";
         setStatus("");
-      }, 2000);
+      }, 3000);
 
     } catch (err) {
       console.error("ha-airfryer-card: Fehler beim Speichern", err);
