@@ -64,7 +64,9 @@ class HaAiryerCard extends HTMLElement {
       this._initialized = true;
       this._render();
     } else {
-      this._updateControls();
+      // Steuerung nicht aktualisieren wenn Formular offen ist (würde Tastatur schließen)
+      const formOpen = this.shadowRoot.getElementById("save_form")?.style.display === "flex";
+      if (!formOpen) this._updateControls();
       if (prevScripts !== newScripts) this._renderButtons();
     }
   }
@@ -273,14 +275,6 @@ class HaAiryerCard extends HTMLElement {
           margin-bottom: 12px; padding: 0 4px; min-height: 32px; gap: 8px;
         }
         .title { font-size: 1em; font-weight: 500; color: var(--primary-text-color); flex: 1; }
-        .add-btn {
-          display: flex; align-items: center; justify-content: center;
-          width: 32px; height: 32px; border-radius: 50%;
-          background: var(--primary-color); color: var(--text-primary-color, #fff);
-          cursor: pointer; border: none; font-size: 1.4em; line-height: 1;
-          transition: opacity 0.15s; flex-shrink: 0;
-        }
-        .add-btn:hover { opacity: 0.85; }
 
         .controls-wrapper { display: flex; flex-direction: column; margin-bottom: 12px; }
         @container (min-width: 480px) {
@@ -433,10 +427,7 @@ class HaAiryerCard extends HTMLElement {
         .empty { grid-column: 1 / -1; text-align: center; color: var(--secondary-text-color); font-size: 0.85em; padding: 16px 0; }
       </style>
       <ha-card>
-        <div class="header">
-          ${title ? `<span class="title">${title}</span>` : `<span class="title"></span>`}
-          <button class="add-btn" id="add-btn" title="Neue Einstellung anlegen">+</button>
-        </div>
+        ${title ? `<div class="header"><span class="title">${title}</span></div>` : ""}
         ${hasControls ? `
         <div class="controls-wrapper">
           ${hasMain ? `<div class="col-main" id="col-main"></div>` : ""}
@@ -448,18 +439,11 @@ class HaAiryerCard extends HTMLElement {
       </ha-card>
     `;
 
-    this.shadowRoot.getElementById("add-btn")
-      .addEventListener("click", () => this._navigate(blueprint_path));
-
     if (hasControls) this._updateControls();
     this._renderButtons();
   }
 
   _updateControls() {
-    // Formular-Zustand merken
-    const formVisible = this.shadowRoot.getElementById("save_form")?.style.display !== "none";
-    const formName = this.shadowRoot.getElementById("save_name")?.value || "";
-    const formIcon = this.shadowRoot.querySelector(".icon-btn.selected")?.dataset.icon || "mdi:chef-hat";
     const cfg = this._config;
 
     const colMain = this.shadowRoot.getElementById("col-main");
@@ -551,18 +535,6 @@ class HaAiryerCard extends HTMLElement {
 
       colMain.innerHTML = html;
       this._bindMainEvents(colMain);
-
-      // Formular-Zustand wiederherstellen wenn es offen war
-      if (formVisible) {
-        const form = colMain.querySelector("#save_form");
-        const nameInput = colMain.querySelector("#save_name");
-        if (form) form.style.display = "flex";
-        if (nameInput && formName) nameInput.value = formName;
-        // Gespeichertes Icon wieder auswählen
-        colMain.querySelectorAll(".icon-btn").forEach((btn) => {
-          btn.classList.toggle("selected", btn.dataset.icon === formIcon);
-        });
-      }
     }
 
     const colWarm = this.shadowRoot.getElementById("col-warm");
