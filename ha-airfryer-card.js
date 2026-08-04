@@ -456,6 +456,10 @@ class HaAiryerCard extends HTMLElement {
   }
 
   _updateControls() {
+    // Formular-Zustand merken
+    const formVisible = this.shadowRoot.getElementById("save_form")?.style.display !== "none";
+    const formName = this.shadowRoot.getElementById("save_name")?.value || "";
+    const formIcon = this.shadowRoot.querySelector(".icon-btn.selected")?.dataset.icon || "mdi:chef-hat";
     const cfg = this._config;
 
     const colMain = this.shadowRoot.getElementById("col-main");
@@ -547,6 +551,18 @@ class HaAiryerCard extends HTMLElement {
 
       colMain.innerHTML = html;
       this._bindMainEvents(colMain);
+
+      // Formular-Zustand wiederherstellen wenn es offen war
+      if (formVisible) {
+        const form = colMain.querySelector("#save_form");
+        const nameInput = colMain.querySelector("#save_name");
+        if (form) form.style.display = "flex";
+        if (nameInput && formName) nameInput.value = formName;
+        // Gespeichertes Icon wieder auswählen
+        colMain.querySelectorAll(".icon-btn").forEach((btn) => {
+          btn.classList.toggle("selected", btn.dataset.icon === formIcon);
+        });
+      }
     }
 
     const colWarm = this.shadowRoot.getElementById("col-warm");
