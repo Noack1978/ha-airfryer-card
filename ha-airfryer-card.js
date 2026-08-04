@@ -341,7 +341,54 @@ class HaAiryerCard extends HTMLElement {
         .action-btn.pause { background: var(--warning-color, #fb8c00); }
         .action-btn.stop  { background: var(--error-color, #db4437); }
         .action-btn.warm  { background: var(--info-color, #039be5); flex: none; padding: 8px 14px; flex-direction: row; gap: 6px; }
+        .action-btn.save { background: var(--secondary-background-color); color: var(--primary-text-color); border: 1px solid var(--primary-color); flex: none; padding: 8px 14px; flex-direction: row; gap: 6px; width: 100%; justify-content: center; }
         .action-btn.update { background: var(--secondary-background-color); color: var(--primary-text-color); flex: none; padding: 8px 14px; flex-direction: row; gap: 6px; border: 1px solid var(--divider-color); }
+
+        /* Speichern-Formular */
+        .save-wrap { padding: 4px; margin-top: 6px; }
+        .save-form {
+          margin-top: 8px; padding: 12px; border-radius: 10px;
+          background: var(--secondary-background-color);
+          border: 1px solid var(--primary-color);
+          display: flex; flex-direction: column; gap: 10px;
+        }
+        .save-info {
+          display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+          font-size: 0.8em; color: var(--secondary-text-color);
+        }
+        .save-info ha-icon { --mdc-icon-size: 14px; color: var(--primary-color); }
+        .save-input {
+          padding: 8px 10px; border-radius: 8px; border: 1px solid var(--divider-color);
+          background: var(--card-background-color); color: var(--primary-text-color);
+          font-size: 0.9em; width: 100%; box-sizing: border-box;
+        }
+        .save-input:focus { outline: none; border-color: var(--primary-color); }
+        .save-icon-label { font-size: 0.75em; color: var(--secondary-text-color); }
+        .save-icon-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+        .icon-btn {
+          width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--divider-color);
+          background: var(--card-background-color); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: border-color 0.15s, background 0.15s;
+        }
+        .icon-btn ha-icon { --mdc-icon-size: 20px; color: var(--primary-text-color); }
+        .icon-btn.selected { border-color: var(--primary-color); background: var(--primary-color); }
+        .icon-btn.selected ha-icon { color: var(--text-primary-color, #fff); }
+        .save-actions { display: flex; gap: 8px; }
+        .save-cancel {
+          flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--divider-color);
+          background: transparent; color: var(--secondary-text-color); cursor: pointer; font-size: 0.85em;
+        }
+        .save-cancel:hover { background: var(--divider-color); }
+        .save-confirm {
+          flex: 2; padding: 8px; border-radius: 8px; border: none;
+          background: var(--primary-color); color: var(--text-primary-color, #fff);
+          cursor: pointer; font-size: 0.85em; font-weight: 600;
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .save-confirm ha-icon { --mdc-icon-size: 16px; }
+        .save-confirm:hover { opacity: 0.85; }
+        .save-status { font-size: 0.8em; text-align: center; min-height: 1em; }
         .action-btn:hover { opacity: 0.85; }
 
         /* Restlaufzeit */
@@ -447,6 +494,57 @@ class HaAiryerCard extends HTMLElement {
       if (cfg.entity_stop)  actionBtns.push(`<button class="action-btn stop"  id="btn_stop"><ha-icon icon="mdi:stop"></ha-icon>Stopp</button>`);
       if (actionBtns.length) html += `<div class="action-row">${actionBtns.join("")}</div>`;
 
+      // Speichern-Button + eingebettetes Formular
+      if (cfg.entity_temp && cfg.entity_time) {
+        const tempSt = this._stateOf("entity_temp");
+        const timeSt = this._stateOf("entity_time");
+        const temp = parseFloat(tempSt?.state || 0);
+        const time = parseFloat(timeSt?.state || 0);
+        const tempUnit = tempSt?.attributes?.unit_of_measurement || "°C";
+        const timeUnit = timeSt?.attributes?.unit_of_measurement || "min";
+
+        html += `
+          <div class="save-wrap">
+            <button class="action-btn save" id="btn_save_toggle">
+              <ha-icon icon="mdi:content-save"></ha-icon>Als Rezept speichern
+            </button>
+            <div class="save-form" id="save_form" style="display:none">
+              <div class="save-info">
+                <ha-icon icon="mdi:thermometer"></ha-icon> ${temp} ${tempUnit}
+                &nbsp;·&nbsp;
+                <ha-icon icon="mdi:timer"></ha-icon> ${time} ${timeUnit}
+              </div>
+              <input class="save-input" id="save_name" type="text" placeholder="Rezeptname" autocomplete="off"/>
+              <div class="save-icon-label">Icon (optional)</div>
+              <div class="save-icon-grid" id="save_icon_grid">
+                ${[
+                  ["mdi:chef-hat","Allgemein"],
+                  ["mdi:food-drumstick","Fleisch"],
+                  ["mdi:fish","Fisch"],
+                  ["mdi:french-fries","Pommes"],
+                  ["mdi:pizza","Pizza"],
+                  ["mdi:food-croissant","Gebäck"],
+                  ["mdi:egg","Eier"],
+                  ["mdi:carrot","Gemüse"],
+                  ["mdi:food","Snack"],
+                  ["mdi:cookie","Dessert"],
+                ].map(([icon, label]) =>
+                  `<button class="icon-btn" data-icon="${icon}" title="${label}">
+                    <ha-icon icon="${icon}"></ha-icon>
+                  </button>`
+                ).join("")}
+              </div>
+              <div class="save-actions">
+                <button class="save-cancel" id="save_cancel">Abbrechen</button>
+                <button class="save-confirm" id="save_confirm">
+                  <ha-icon icon="mdi:check"></ha-icon>Speichern
+                </button>
+              </div>
+              <div class="save-status" id="save_status"></div>
+            </div>
+          </div>`;
+      }
+
       colMain.innerHTML = html;
       this._bindMainEvents(colMain);
     }
@@ -496,6 +594,49 @@ class HaAiryerCard extends HTMLElement {
     if (bp) bp.addEventListener("click", () => this._callService("button", "press", cfg.entity_pause));
     const bst = c.querySelector("#btn_stop");
     if (bst) bst.addEventListener("click", () => this._callService("button", "press", cfg.entity_stop));
+
+    const bsave = c.querySelector("#btn_save_toggle");
+    if (bsave) bsave.addEventListener("click", () => {
+      const form = c.querySelector("#save_form");
+      if (form) form.style.display = form.style.display === "none" ? "flex" : "none";
+      const nameInput = c.querySelector("#save_name");
+      if (nameInput) nameInput.focus();
+    });
+
+    const saveCancel = c.querySelector("#save_cancel");
+    if (saveCancel) saveCancel.addEventListener("click", () => {
+      const form = c.querySelector("#save_form");
+      if (form) form.style.display = "none";
+    });
+
+    // Icon-Auswahl
+    let selectedIcon = "mdi:chef-hat";
+    c.querySelectorAll(".icon-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        c.querySelectorAll(".icon-btn").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        selectedIcon = btn.dataset.icon;
+      });
+    });
+    // Standard-Icon vorauswählen
+    const defaultIconBtn = c.querySelector('.icon-btn[data-icon="mdi:chef-hat"]');
+    if (defaultIconBtn) defaultIconBtn.classList.add("selected");
+
+    const saveConfirm = c.querySelector("#save_confirm");
+    if (saveConfirm) saveConfirm.addEventListener("click", async () => {
+      const nameInput = c.querySelector("#save_name");
+      const status = c.querySelector("#save_status");
+      const name = nameInput?.value?.trim();
+      if (!name) {
+        if (status) { status.style.color = "var(--error-color, #db4437)"; status.textContent = "Bitte einen Namen eingeben."; }
+        return;
+      }
+      if (status) { status.style.color = "var(--secondary-text-color)"; status.textContent = "Wird gespeichert…"; }
+      await this._saveAsScript(name, selectedIcon);
+      const form = c.querySelector("#save_form");
+      if (form) form.style.display = "none";
+      if (nameInput) nameInput.value = "";
+    });
   }
 
   _bindWarmEvents(c) {
@@ -528,6 +669,60 @@ class HaAiryerCard extends HTMLElement {
         });
       }
     });
+  }
+
+  async _saveAsScript(cleanName, icon = "mdi:chef-hat") {
+    const cfg = this._config;
+    const tempSt = this._stateOf("entity_temp");
+    const timeSt = this._stateOf("entity_time");
+    if (!tempSt || !timeSt) return;
+
+    const temp = parseFloat(tempSt.state);
+    const time = parseFloat(timeSt.state);
+
+    const scriptId = "airfryer_" + cleanName
+      .toLowerCase()
+      .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "");
+
+    const scriptConfig = {
+      alias: cleanName,
+      icon: icon,
+      use_blueprint: {
+        path: "airfryer_preset.yaml",
+        input: {
+          temperatur: temp,
+          kochzeit: time,
+          temperatur_entity: cfg.entity_temp,
+          kochzeit_entity: cfg.entity_time,
+        },
+      },
+    };
+
+    try {
+      await this._hass.callApi(
+        "POST",
+        `config/script/config/${scriptId}`,
+        scriptConfig
+      );
+
+      await this._hass.callApi("POST", "config/label_registry", {
+        action: "update",
+        entity_id: `script.${scriptId}`,
+        labels: [cfg.label || DEFAULT_LABEL],
+      }).catch(() => {});
+
+      await this._hass.callService("script", "reload", {});
+    } catch (err) {
+      console.error("ha-airfryer-card: Fehler beim Speichern", err);
+      // Status-Anzeige im Formular
+      const status = this.shadowRoot.querySelector("#save_status");
+      if (status) {
+        status.style.color = "var(--error-color, #db4437)";
+        status.textContent = `Fehler: ${err.message || err}`;
+      }
+    }
   }
 
   _renderButtons() {
