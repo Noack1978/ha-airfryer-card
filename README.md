@@ -113,6 +113,12 @@ ausgeblendet.
 | `entity_presets` | – | Meine Voreinstellungen (`select`) |
 | `entity_update` | – | Rezepte aktualisieren (`button`) |
 
+## Rezepte direkt speichern
+
+Über den Button **"Als Rezept speichern"** in der manuellen Steuerung können aktuelle Temperatur und Kochzeit direkt als neues Rezept-Skript gespeichert werden – ohne den Blueprint-Editor öffnen zu müssen.
+
+> **Hinweis:** Die Speicherfunktion erfordert **Admin-Rechte** in Home Assistant, da sie Konfigurationsdateien schreibt (`/api/config/script/config/`). Nutzer ohne Admin-Rechte (z.B. ein Tablet-Kiosk-Account) erhalten beim Speichern einen Fehler. In diesem Fall müssen Rezepte über einen Admin-Account angelegt werden.
+
 ## Rezepte anlegen
 
 1. Auf **+** in der Karte tippen → Blueprint-Übersicht öffnet sich.
