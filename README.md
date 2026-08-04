@@ -117,6 +117,14 @@ ausgeblendet.
 
 Über den Button **"Als Rezept speichern"** in der manuellen Steuerung können aktuelle Temperatur und Kochzeit direkt als neues Rezept-Skript gespeichert werden – ohne den Blueprint-Editor öffnen zu müssen.
 
+Ein Tippen auf den Button öffnet ein Formular direkt in der Karte:
+1. Aktuelle Temperatur und Kochzeit werden angezeigt
+2. **Name** für das Rezept eingeben
+3. **Icon** aus 10 Vorschlägen auswählen
+4. Auf **"Speichern"** tippen
+
+Das Rezept erscheint danach automatisch in der Karte. Das Formular schließt sich sobald das neue Rezept sichtbar ist.
+
 > **Hinweis:** Die Speicherfunktion erfordert **Admin-Rechte** in Home Assistant, da sie Konfigurationsdateien schreibt (`/api/config/script/config/`). Nutzer ohne Admin-Rechte (z.B. ein Tablet-Kiosk-Account) erhalten beim Speichern einen Fehler. In diesem Fall müssen Rezepte über einen Admin-Account angelegt werden.
 
 ## Rezepte anlegen
