@@ -688,28 +688,54 @@ class HaAiryerCard extends HTMLElement {
       },
     };
 
+    const statusEl = this.shadowRoot.querySelector("#save_status");
+    const setStatus = (msg, color = "var(--secondary-text-color)") => {
+      if (statusEl) { statusEl.style.color = color; statusEl.textContent = msg; }
+    };
+
     try {
-      await this._hass.callApi(
-        "POST",
-        `config/script/config/${scriptId}`,
-        scriptConfig
-      );
+      setStatus("Skript wird erstellt…");
 
-      await this._hass.callApi("POST", "config/label_registry", {
-        action: "update",
-        entity_id: `script.${scriptId}`,
-        labels: [cfg.label || DEFAULT_LABEL],
-      }).catch(() => {});
+      // Skript anlegen via REST API
+      const token = this._hass.auth?.data?.access_token || "";
+      const resp = await fetch(`/api/config/script/config/${scriptId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(scriptConfig),
+      });
 
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${text}`);
+      }
+
+      setStatus("Label wird zugewiesen…");
+
+      // Label zuweisen via WebSocket (zuverlässiger als REST)
+      await new Promise((resolve) => {
+        this._hass.connection.sendMessagePromise({
+          type: "config/entity_registry/update",
+          entity_id: `script.${scriptId}`,
+          labels: [cfg.label || DEFAULT_LABEL],
+        }).then(resolve).catch(resolve); // Fehler ignorieren, Label ist optional
+      });
+
+      setStatus("Skripte werden neu geladen…");
       await this._hass.callService("script", "reload", {});
+
+      setStatus(`✓ "${cleanName}" gespeichert!`, "var(--success-color, #43a047)");
+      setTimeout(() => {
+        const form = this.shadowRoot.querySelector("#save_form");
+        if (form) form.style.display = "none";
+        setStatus("");
+      }, 2000);
+
     } catch (err) {
       console.error("ha-airfryer-card: Fehler beim Speichern", err);
-      // Status-Anzeige im Formular
-      const status = this.shadowRoot.querySelector("#save_status");
-      if (status) {
-        status.style.color = "var(--error-color, #db4437)";
-        status.textContent = `Fehler: ${err.message || err}`;
-      }
+      setStatus(`Fehler: ${err.message || err}`, "var(--error-color, #db4437)");
     }
   }
 
