@@ -621,9 +621,7 @@ class HaAiryerCard extends HTMLElement {
       }
       if (status) { status.style.color = "var(--secondary-text-color)"; status.textContent = "Wird gespeichert…"; }
       await this._saveAsScript(name, selectedIcon);
-      const form = c.querySelector("#save_form");
-      if (form) form.style.display = "none";
-      if (nameInput) nameInput.value = "";
+      // Formular bleibt offen - Nutzer schließt manuell über Abbrechen
     });
   }
 
@@ -723,23 +721,19 @@ class HaAiryerCard extends HTMLElement {
       // Kurz warten damit Entity Registry aktualisiert wird
       await new Promise((r) => setTimeout(r, 1500));
 
-      setStatus("Label wird zugewiesen…");
+      setStatus("✓ Gespeichert! Label wird in 2s zugewiesen…", "var(--success-color, #43a047)");
+      await new Promise((r) => setTimeout(r, 2000));
       try {
         await this._hass.connection.sendMessagePromise({
           type: "config/entity_registry/update",
           entity_id: `script.${scriptId}`,
           labels: [cfg.label || DEFAULT_LABEL],
         });
+        setStatus("✓ Fertig! Tippe Abbrechen zum Schließen.", "var(--success-color, #43a047)");
       } catch (labelErr) {
-        console.warn("ha-airfryer-card: Label-Zuweisung fehlgeschlagen", labelErr);
+        console.warn("ha-airfryer-card: Label fehlgeschlagen", labelErr);
+        setStatus("✓ Skript gespeichert (Label manuell setzen). Tippe Abbrechen.", "var(--warning-color, #fb8c00)");
       }
-
-      setStatus("✓ Gespeichert! Formular schließt in 3s…", "var(--success-color, #43a047)");
-      setTimeout(() => {
-        const form = this.shadowRoot.querySelector("#save_form");
-        if (form) form.style.display = "none";
-        setStatus("");
-      }, 3000);
 
     } catch (err) {
       console.error("ha-airfryer-card: Fehler beim Speichern", err);
