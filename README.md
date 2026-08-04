@@ -127,14 +127,6 @@ Das Rezept erscheint danach automatisch in der Karte. Das Formular schließt sic
 
 > **Hinweis:** Die Speicherfunktion erfordert **Admin-Rechte** in Home Assistant, da sie Konfigurationsdateien schreibt (`/api/config/script/config/`). Nutzer ohne Admin-Rechte (z.B. ein Tablet-Kiosk-Account) erhalten beim Speichern einen Fehler. In diesem Fall müssen Rezepte über einen Admin-Account angelegt werden.
 
-## Rezepte anlegen
-
-1. Auf **+** in der Karte tippen → Blueprint-Übersicht öffnet sich.
-2. Bei **"Airfryer Einstellung starten"** auf "Skript erstellen" tippen.
-3. Name, Temperatur, Kochzeit einstellen, Label **`airfryer`** zuweisen,
-   Icon setzen → Speichern.
-4. Das neue Preset erscheint **automatisch** in der Karte.
-
 ## Versionierung
 
 | Version | Änderung |
